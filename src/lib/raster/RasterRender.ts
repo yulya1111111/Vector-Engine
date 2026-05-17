@@ -368,7 +368,7 @@ export class RasterRenderer
         const len = Math.sqrt(dx * dx + dy * dy);
         
         if (len === 0) {
-            this.fillCircle(x0, y0, halfWidth, color);
+            // Пропускаем отрисовку нулевой длины
             return;
         }
         
@@ -386,25 +386,26 @@ export class RasterRenderer
         ];
         
         this.fillPolygon(rectPoints, color);
-        
-        this.fillCircle(x0, y0, halfWidth, color);
-        this.fillCircle(x1, y1, halfWidth, color);
+        // Убраны fillCircle - линии теперь имеют острые концы без кругов
     }
 
     strokePolygon(points: { x: number; y: number }[], color: RGBA, width = 1)
     {
         if (points.length < 2) return;
 
-        const halfWidth = width / 2;
-
-        for (let i = 0; i < points.length; i++) 
+        for (let i = 0; i < points.length - 1; i++) 
         {
             const p1 = points[i];
-            const p2 = points[(i + 1) % points.length];
+            const p2 = points[i + 1];
             
             this.strokeLine(p1.x, p1.y, p2.x, p2.y, color, width);
-            
-            this.fillCircle(p1.x, p1.y, halfWidth, color);
+        }
+        
+        // Для замкнутых полигонов рисуем последний сегмент
+        if (points.length >= 3) {
+            const last = points[points.length - 1];
+            const first = points[0];
+            this.strokeLine(last.x, last.y, first.x, first.y, color, width);
         }
     }
 }

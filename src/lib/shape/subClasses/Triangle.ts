@@ -5,17 +5,54 @@ import { Point2D } from '../../math/mat3';
 
 export class Triangle extends Shape 
 {
-    p1: Point2D;
-    p2: Point2D;
-    p3: Point2D;
+    private _p1: Point2D;
+    private _p2: Point2D;
+    private _p3: Point2D;
 
     constructor(w: number, h: number) 
     {
         super();
 
-        this.p1 = { x: 0, y: -h / 2 };
-        this.p2 = { x: -w / 2, y: h / 2 };
-        this.p3 = { x: w / 2, y: h / 2 };
+        // Вычисляем центр масс и сохраняем вершины относительно него
+        const cx = (0 + (-w / 2) + (w / 2)) / 3;
+        const cy = ((-h / 2) + (h / 2) + (h / 2)) / 3;
+
+        this._p1 = { x: 0 - cx, y: -h / 2 - cy };
+        this._p2 = { x: -w / 2 - cx, y: h / 2 - cy };
+        this._p3 = { x: w / 2 - cx, y: h / 2 - cy };
+    }
+
+    // Геттеры для вершин
+    get p1(): Point2D { return { ...this._p1 }; }
+    get p2(): Point2D { return { ...this._p2 }; }
+    get p3(): Point2D { return { ...this._p3 }; }
+
+    // Методы для работы с контрольными точками (согласно спецификации)
+    getControlPoints(): Point2D[] {
+        return [this._p1, this._p2, this._p3];
+    }
+
+    setControlPoint(idx: number, pt: Point2D): void {
+        switch (idx) {
+            case 0: this._p1 = { ...pt }; break;
+            case 1: this._p2 = { ...pt }; break;
+            case 2: this._p3 = { ...pt }; break;
+            default: throw new Error(`Invalid control point index: ${idx}`);
+        }
+    }
+
+    // evalLocal не применим для треугольника (это не кривая)
+    evalLocal(_t: number): Point2D {
+        throw new Error('evalLocal is not applicable for Triangle');
+    }
+
+    // flattenDevicePoints для аппроксимации (треугольник уже является ломаной)
+    flattenDevicePoints(_flatness: number): Point2D[] {
+        return [
+            this.transformPointToDevice(this._p1.x, this._p1.y),
+            this.transformPointToDevice(this._p2.x, this._p2.y),
+            this.transformPointToDevice(this._p3.x, this._p3.y),
+        ];
     }
 
     getLocalBounds(): Bounds | null
@@ -76,15 +113,30 @@ export class Triangle extends Shape
     {
         return {
             type: 'Triangle',
-            p1: this.p1,
-            p2: this.p2,
-            p3: this.p3,
+            p1: this._p1,
+            p2: this._p2,
+            p3: this._p3,
             transform: this.transform,
             fillStyle: this.fillStyle,
             fillOpacity: this.fillOpacity,
             strokeStyle: this.strokeStyle,
             strokeWidth: this.strokeWidth,
             strokeOpacity: this.strokeOpacity,
+            version: 1,
         };
+    }
+
+    clone(): Triangle {
+        const cloned = new Triangle(1, 1);
+        cloned._p1 = { ...this._p1 };
+        cloned._p2 = { ...this._p2 };
+        cloned._p3 = { ...this._p3 };
+        cloned.transform = this.transform.clone();
+        cloned.fillStyle = this.fillStyle;
+        cloned.fillOpacity = this.fillOpacity;
+        cloned.strokeStyle = this.strokeStyle;
+        cloned.strokeWidth = this.strokeWidth;
+        cloned.strokeOpacity = this.strokeOpacity;
+        return cloned;
     }
 }

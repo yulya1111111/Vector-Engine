@@ -4,82 +4,86 @@ import { RasterRenderer } from '../../raster/RasterRender.ts';
 import { Point2D } from '../../math/mat3';
 
 export class CubicBezier extends Shape {
-    p0: Point2D;
-    p1: Point2D;
-    p2: Point2D;
-    p3: Point2D;
+    private _p0: Point2D;
+    private _p1: Point2D;
+    private _p2: Point2D;
+    private _p3: Point2D;
 
     constructor(x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) 
     {
         super();
-        this.p0 = { x: x0, y: y0 };
-        this.p1 = { x: x1, y: y1 };
-        this.p2 = { x: x2, y: y2 };
-        this.p3 = { x: x3, y: y3 };
+        this._p0 = { x: x0, y: y0 };
+        this._p1 = { x: x1, y: y1 };
+        this._p2 = { x: x2, y: y2 };
+        this._p3 = { x: x3, y: y3 };
     }
 
-    private getCurvePoints(steps: number = 20): Point2D[] 
+    // Геттеры для контрольных точек
+    get p0(): Point2D { return { ...this._p0 }; }
+    get p1(): Point2D { return { ...this._p1 }; }
+    get p2(): Point2D { return { ...this._p2 }; }
+    get p3(): Point2D { return { ...this._p3 }; }
+
+    // evalLocal(t) — вычисление точки на кривой по формуле B(t)=(1−t)³p₀ + 3(1−t)²tp₁ + 3(1−t)t²p₂ + t³p₃
+    evalLocal(t: number): Point2D 
+    {
+        const invT = 1 - t;
+        const x = Math.pow(invT, 3) * this._p0.x +
+            3 * Math.pow(invT, 2) * t * this._p1.x +
+            3 * invT * Math.pow(t, 2) * this._p2.x +
+            Math.pow(t, 3) * this._p3.x;
+
+        const y = Math.pow(invT, 3) * this._p0.y +
+            3 * Math.pow(invT, 2) * t * this._p1.y +
+            3 * invT * Math.pow(t, 2) * this._p2.y +
+            Math.pow(t, 3) * this._p3.y;
+
+        return { x, y };
+    }
+
+    // flattenDevicePoints(flatness) — аппроксимация кривой ломаной в экранных координатах
+    flattenDevicePoints(flatness: number): Point2D[] 
     {
         const points: Point2D[] = [];
-        for (let i = 0; i <= steps; i++) {
+        const steps = this.calculateStepsForFlatness(flatness);
+        for (let i = 0; i <= steps; i++) 
+            {
             const t = i / steps;
-            const invT = 1 - t;
-
-            const x = Math.pow(invT, 3) * this.p0.x +
-                3 * Math.pow(invT, 2) * t * this.p1.x +
-                3 * invT * Math.pow(t, 2) * this.p2.x +
-                Math.pow(t, 3) * this.p3.x;
-
-            const y = Math.pow(invT, 3) * this.p0.y +
-                3 * Math.pow(invT, 2) * t * this.p1.y +
-                3 * invT * Math.pow(t, 2) * this.p2.y +
-                Math.pow(t, 3) * this.p3.y;
-
-            points.push({ x, y });
+            const point = this.evalLocal(t);
+            points.push(this.transformPointToDevice(point.x, point.y));
         }
         return points;
     }
 
-    getLocalBounds(): Bounds | null {
-        return Bounds.fromPoints([this.p0, this.p1, this.p2, this.p3]);
+    // Методы для работы с контрольными точками
+    getControlPoints(): Point2D[] {
+        return [this._p0, this._p1, this._p2, this._p3];
     }
 
-    getBounds(): Bounds | null {
-        const points = this.getCurvePoints(20);
-        const devicePoints = points.map(p => this.transformPointToDevice(p.x, p.y));
-        return Bounds.fromPoints(devicePoints);
-    }
-
-    drawRaster(r: RasterRenderer): void 
+    setControlPoint(idx: number, pt: Point2D): void 
     {
-        const points = this.getCurvePoints(40);
-        const devicePoints = points.map(p => this.transformPointToDevice(p.x, p.y));
-
-        if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
-            r.strokePolygon(devicePoints, this.getStrokeColor(), this.strokeWidth);
+        switch (idx) {
+            case 0: this._p0 = { ...pt }; break;
+            case 1: this._p1 = { ...pt }; break;
+            case 2: this._p2 = { ...pt }; break;
+            case 3: this._p3 = { ...pt }; break;
+            default: throw new Error(`Invalid control point index: ${idx}`);
         }
     }
 
-    hitTest(px: number, py: number): boolean
+    private calculateStepsForFlatness(flatness: number): number 
     {
-        const localP = this.transformPointToLocal(px, py);
-        if (!localP) return false;
-
-        const points = this.getCurvePoints(50);
-        const threshold = this.strokeWidth / 2 + 2;
-
-        for (let i = 0; i < points.length - 1; i++) 
-        {
-            const dist = this.pointToSegmentDistance(localP.x, localP.y, points[i].x, points[i].y, points[i+1].x, points[i+1].y);
-            if (dist <= threshold) {
-                return true;
-            }
-        }
-        return false;
+        // Оценка длины для определения необходимого количества шагов
+        const len0 = Math.sqrt(Math.pow(this._p1.x - this._p0.x, 2) + Math.pow(this._p1.y - this._p0.y, 2));
+        const len1 = Math.sqrt(Math.pow(this._p2.x - this._p1.x, 2) + Math.pow(this._p2.y - this._p1.y, 2));
+        const len2 = Math.sqrt(Math.pow(this._p3.x - this._p2.x, 2) + Math.pow(this._p3.y - this._p2.y, 2));
+        const maxLength = Math.max(len0, Math.max(len1, len2));
+        // Больше шагов для плавности
+        const steps = Math.max(20, Math.ceil(maxLength / flatness));
+        return steps;
     }
 
-    private pointToSegmentDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number
-    {
+    private pointToSegmentDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
         const dx = x2 - x1;
         const dy = y2 - y1;
         const lenSq = dx * dx + dy * dy;
@@ -101,20 +105,84 @@ export class CubicBezier extends Shape {
         return Math.sqrt(ddx * ddx + ddy * ddy);
     }
 
+    getLocalBounds(): Bounds | null 
+    {
+        return Bounds.fromPoints([this._p0, this._p1, this._p2, this._p3]);
+    }
+
+    getBounds(): Bounds | null 
+    {
+        // Вычисляем границы по точкам аппроксимации, не по контрольным точкам
+        const flatness = 2;
+        const points = this.flattenDevicePoints(flatness);
+        return Bounds.fromPoints(points);
+    }
+
+    drawRaster(r: RasterRenderer): void 
+    {
+        const flatness = 1;
+        const points = this.flattenDevicePoints(flatness);
+
+        if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
+            r.strokePolygon(points, this.getStrokeColor(), this.strokeWidth);
+        }
+        // Кривые Безье не заполняются - только stroke
+    }
+
+    hitTest(px: number, py: number): boolean
+    {
+        const localP = this.transformPointToLocal(px, py);
+        if (!localP) return false;
+
+        const flatness = this.strokeWidth / 2 + 2;
+        const steps = this.calculateStepsForFlatness(flatness);
+        const threshold = flatness;
+
+        for (let i = 0; i < steps; i++) 
+        {
+            const t1 = i / steps;
+            const t2 = (i + 1) / steps;
+            const p1 = this.evalLocal(t1);
+            const p2 = this.evalLocal(t2);
+            const dist = this.pointToSegmentDistance(localP.x, localP.y, p1.x, p1.y, p2.x, p2.y);
+            if (dist <= threshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     toJSON(): any
     {
         return {
             type: 'CubicBezier',
-            p0: this.p0,
-            p1: this.p1,
-            p2: this.p2,
-            p3: this.p3,
+            p0: this._p0,
+            p1: this._p1,
+            p2: this._p2,
+            p3: this._p3,
             transform: this.transform,
             fillStyle: this.fillStyle,
             fillOpacity: this.fillOpacity,
             strokeStyle: this.strokeStyle,
             strokeWidth: this.strokeWidth,
             strokeOpacity: this.strokeOpacity,
+            version: 1,
         };
+    }
+
+    clone(): CubicBezier {
+        const cloned = new CubicBezier(
+            this._p0.x, this._p0.y,
+            this._p1.x, this._p1.y,
+            this._p2.x, this._p2.y,
+            this._p3.x, this._p3.y
+        );
+        cloned.transform = this.transform.clone();
+        cloned.fillStyle = this.fillStyle;
+        cloned.fillOpacity = this.fillOpacity;
+        cloned.strokeStyle = this.strokeStyle;
+        cloned.strokeWidth = this.strokeWidth;
+        cloned.strokeOpacity = this.strokeOpacity;
+        return cloned;
     }
 }
