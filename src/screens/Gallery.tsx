@@ -1,56 +1,51 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+﻿import {useRef, useState} from "react";
 
-interface Project {
-  id: string;
-  name: string;
-  date: string;
-}
+import "../css/TailwindcssStyles.css";
+import '../Interfaces/IGalleryItem'
+import "../App.css"
 
-export default function Gallery() {
-  const [projects, setProjects] = useState<Project[]>([
-    { id: '1', name: 'Мой первый проект', date: new Date().toLocaleDateString() }
-  ]);
+import {IGalleryItem} from "../Interfaces/IGalleryItem";
+import GalleryItem from "../components/GalleryItem";
 
-  const addProject = () => {
-    const newProject: Project = {
-      id: Date.now().toString(),
-      name: `Проект ${projects.length + 1}`,
-      date: new Date().toLocaleDateString()
-    };
-    setProjects([...projects, newProject]);
-  };
+export default function Gallery()  
+{
+    let [projects, setProjects] = useState<IGalleryItem[]>([]);
 
-  return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-white">Мои проекты</h1>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={addProject}
-          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2 text-white"
-        >
-          <Plus size={20} />
-          Создать проект
-        </motion.button>
-      </div>
+    const _id = useRef<number>(1)
+    
+    function deleteProject(id: string)
+    {
+        let newArr : IGalleryItem[] = projects.filter((item) => item.id !== id);
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <Link key={project.id} to={`/editor/${project.id}`}>
-            <motion.div
-              whileHover={{ y: -5, scale: 1.02 }}
-              className="bg-slate-800 p-6 rounded-lg border border-slate-700 cursor-pointer"
-            >
-              <h2 className="text-xl font-semibold mb-2 text-white">{project.name}</h2>
-              <p className="text-slate-400 text-sm">Создан: {project.date}</p>
-            </motion.div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+        setProjects(newArr);
+    }
+    
+    const AddProject = () => {
+        
+        let project : IGalleryItem = {
+            id: _id.current.toString(),
+            name: "имя",
+            date: new Date().toISOString().split("T")[0],
+        }
+
+        console.log(_id);
+        
+        _id.current += 1;
+
+        setProjects((prevProjects) => [...prevProjects, project]);
+    }
+    
+    return (
+        <div className="bg-slate-900">
+            <h1>
+                Галерея
+            </h1>
+            <button className="bg-blue-800 text-sm font-medium text-white hover:bg-blue-500 rounded-md ml-4" onClick={AddProject}>
+                Добавить проект
+            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                {projects.map((item) => (<GalleryItem id={item.id} name={item.name} date={item.date} onOpenBtn={() => {}} onCloseBtn={() => deleteProject(item.id)} key = {item.id} />))}
+            </div>
+        </div>
+    )
 }

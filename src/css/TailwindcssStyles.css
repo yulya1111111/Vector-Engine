@@ -1,0 +1,19 @@
+﻿@import "tailwindcss";
+
+/* не работает */
+@layer components 
+{
+    .gallery-item-div
+    {
+        @apply border-gray-200 text-sm font-medium text-white bg-blue-950 rounded-md p-2;
+    }
+    .gallery-item-btn
+    {
+        @apply border-gray-200 text-sm font-medium text-white hover:bg-blue-500 rounded-md;
+    }
+    .gallery-add-component-btn
+    {
+        @apply bg-blue-800 text-sm font-medium text-white hover:bg-blue-500 rounded-md;
+    }
+    
+}
