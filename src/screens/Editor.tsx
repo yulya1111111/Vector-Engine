@@ -21,7 +21,6 @@ const Editor = () => {
 
                 <main className="flex-1 bg-slate-100 overflow-auto" style={{ width: '100%', height: '100%' }}>
                     <CanvasScene lineAlg={"wu"}>
-                        
                     </CanvasScene>
                     {/* Холст */}
                 </main>
