@@ -69,20 +69,20 @@ export class PathBezier extends Shape {
     }
 
     private flattenPolyline(_flatness: number): Point2D[] {
-        const result: Point2D[] = [];
-        const endIndex = this._closed ? this._points.length : this._points.length - 1;
-        
-        for (let i = 0; i < endIndex; i++) {
-            const p = this._points[i];
-            result.push(this.transformPointToDevice(p.x, p.y));
-        }
-        
-        if (this._closed && this._points.length > 0) {
-            result.push(this.transformPointToDevice(this._points[0].x, this._points[0].y));
-        }
-        
-        return result;
+    const result: Point2D[] = [];
+    
+    // Добавляем ВСЕ точки
+    for (const p of this._points) {
+        result.push(this.transformPointToDevice(p.x, p.y));
     }
+    
+    // Если замкнут, добавляем первую точку в конец
+    if (this._closed && this._points.length >= 2) {
+        result.push(this.transformPointToDevice(this._points[0].x, this._points[0].y));
+    }
+    
+    return result;
+}
 
     private flattenBeziers(flatness: number): Point2D[] {
         const result: Point2D[] = [];
