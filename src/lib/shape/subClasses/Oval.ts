@@ -70,6 +70,7 @@ export class Oval extends Shape {
     {
         return {
             type: 'Oval',
+            id: this.id,     
             rx: this.rx,
             ry: this.ry,
             transform: this.transform,

@@ -75,6 +75,7 @@ export class Rect extends Shape
     {
         return {
             type: 'Rect',
+            id: this.id,     
             w: this.w,
             h: this.h,
             transform: this.transform,

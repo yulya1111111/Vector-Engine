@@ -445,6 +445,7 @@ export class PathBezier extends Shape {
     toJSON(): any {
         return {
             type: 'PathBezier',
+            id: this.id,     
             points: this._points,
             mode: this._mode,
             closed: this._closed,

@@ -98,7 +98,27 @@ export abstract class Shape
     abstract hitTest(px: number, py: number): boolean;
     abstract getBounds(): Bounds | null;
     abstract getLocalBounds(): Bounds | null;
-    abstract toJSON(): any;
+
+    // ✅ ДОБАВЬ ЭТОТ МЕТОД (вместо abstract toJSON(): any;)
+    toJSON(): any 
+    {
+        return {
+            type: this.constructor.name,
+            id: this.id,
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY,
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity,
+        };
+    }
 
     // Стандартная реализация для фигур без контрольных точек
     getControlPoints(): Point2D[] | null {

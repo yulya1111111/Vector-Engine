@@ -10,6 +10,8 @@ export class CubicBezier extends Shape {
     private _p3: Point2D;
     private _closed: boolean;
 
+    
+
     constructor(x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, closed: boolean = false) 
     {
         super();
@@ -185,6 +187,7 @@ export class CubicBezier extends Shape {
     {
         return {
             type: 'CubicBezier',
+            id: this.id,     
             p0: this._p0,
             p1: this._p1,
             p2: this._p2,

@@ -120,6 +120,7 @@ export class Line extends Shape
     {
         return {
             type: 'Line',
+            id: this.id,     
             x1: this.x1,
             y1: this.y1,
             x2: this.x2,

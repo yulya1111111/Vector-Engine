@@ -28,17 +28,24 @@ interface HistoryState {
     selectedShapeId: number | null;
 }
 
+// НОВОЕ: интерфейс пропсов
+interface EditorCanvasProps {
+    initialShapes?: Shape[];
+    onSave?: (shapes: Shape[]) => void;
+}
+
 const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_DISTANCE = 40;
 const MIN_SIZE = 10;
 
-export default function EditorCanvas() {
+// НОВОЕ: функция принимает пропсы
+export default function EditorCanvas({ initialShapes = [], onSave }: EditorCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<RasterRenderer | null>(null);
 
-    // Состояние редактора
-    const [shapes, setShapes] = useState<Shape[]>([]);
+    // ИЗМЕНЕНО: начальное значение из initialShapes
+    const [shapes, setShapes] = useState<Shape[]>(initialShapes);
     const [selectedShapeId, setSelectedShapeId] = useState<number | null>(null);
     const [mode, setMode] = useState<EditorMode>('idle');
     const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
@@ -47,38 +54,23 @@ export default function EditorCanvas() {
     const [hoveredShapeId, setHoveredShapeId] = useState<number | null>(null);
     const [addPointPosition, setAddPointPosition] = useState<Point2D | null>(null);
     const [cursorPos, setCursorPos] = useState<Point2D>({ x: 0, y: 0 });
-
-    // Состояние режима добавления точек
     const isAddPointMode = mode === 'addPoint';
-
-    // История для отмены/повтора действий
     const historyRef = useRef<HistoryState[]>([]);
     const historyIndexRef = useRef<number>(-1);
-
-    // Временные данные во время операций
     const startDataRef = useRef<ShapeStartData | null>(null);
     const startPointRef = useRef<Point2D | null>(null);
     const editPointIndexRef = useRef<number | null>(null);
-
-    // Debounce рендеринга (requestAnimationFrame)
     const rafRef = useRef<number | null>(null);
-
-    // Функция: добавление состояния в историю
     const addToHistoryDirect = useCallback((shapesToAdd: Shape[], selectedId: number | null) => {
-        // Клонируем фигуры для истории, создавая снимок
         const copiedShapes = shapesToAdd.map(s => {
             const cloned = s.clone();
             return cloned;
         });
 
-        // Находим индекс выбранной фигуры в новом клонированном массиве
-        // Выбранная фигура в оригинальном массиве должна существовать в клонированном
-        // на том же индексе (но с другим id если она была клонирована)
         let newSelectedId = selectedId;
         if (selectedId !== null) {
             const originalIndex = shapesToAdd.findIndex(s => s.id === selectedId);
             if (originalIndex !== -1 && originalIndex < copiedShapes.length) {
-                // Получаем id клонированной фигуры на этом индексе
                 newSelectedId = copiedShapes[originalIndex].id;
             }
         }
@@ -93,12 +85,10 @@ export default function EditorCanvas() {
         historyIndexRef.current++;
     }, []);
 
-    // Для использования в callback'ах, когда состояние уже обновлено
     const addToHistory = useCallback(() => {
         addToHistoryDirect(shapes, selectedShapeId);
     }, [shapes, selectedShapeId, addToHistoryDirect]);
 
-    // Отмена действия (Undo)
     const undo = useCallback(() => {
         if (historyIndexRef.current > 0) {
             historyIndexRef.current--;
@@ -108,7 +98,6 @@ export default function EditorCanvas() {
         }
     }, []);
 
-    // Повтор действия (Redo)
     const redo = useCallback(() => {
         if (historyIndexRef.current < historyRef.current.length - 1) {
             historyIndexRef.current++;
@@ -118,7 +107,6 @@ export default function EditorCanvas() {
         }
     }, []);
 
-    // Создание прямоугольника
     const createRectangle = useCallback(() => {
         const renderer = rendererRef.current;
         if (!renderer) return;
@@ -137,7 +125,6 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, newRect.id);
     }, [shapes, addToHistoryDirect]);
 
-    // Создание эллипса
     const createEllipse = useCallback(() => {
         const renderer = rendererRef.current;
         if (!renderer) return;
@@ -156,14 +143,12 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, newOval.id);
     }, [shapes, addToHistoryDirect]);
 
-    // Создание кривой Безье (сплайн Catmull-Rom)
     const createBezierCurve = useCallback(() => {
         const renderer = rendererRef.current;
         if (!renderer) return;
 
         const newBezier = new PathBezier('catmull', false);
         
-        // Точки в локальных координатах фигуры (центр в начале координат)
         newBezier.addPointLocal(-50, -50);
         newBezier.addPointLocal(-25, 50);
         newBezier.addPointLocal(25, -50);
@@ -181,7 +166,6 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, newBezier.id);
     }, [shapes, addToHistoryDirect]);
 
-    // Создание треугольника
     const createTriangle = useCallback(() => {
         const renderer = rendererRef.current;
         if (!renderer) return;
@@ -200,7 +184,6 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, newTriangle.id);
     }, [shapes, addToHistoryDirect]);
 
-    // Создание линии
     const createLine = useCallback(() => {
         const renderer = rendererRef.current;
         if (!renderer) return;
@@ -218,12 +201,10 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, newLine.id);
     }, [shapes, addToHistoryDirect]);
 
-    // Создание квадратичной кривой Безье
     const createQuadraticBezier = useCallback(() => {
         const renderer = rendererRef.current;
         if (!renderer) return;
 
-        // Квадратичная кривая: начало, контрольная точка, конец (центрировано вокруг начала координат)
         const newQuad = new QuadraticBezier(-50, 50, 0, -50, 50, 50, false);
         newQuad.transform.x = renderer.width / 2;
         newQuad.transform.y = renderer.height / 2;
@@ -237,12 +218,10 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, newQuad.id);
     }, [shapes, addToHistoryDirect]);
 
-    // Создание кубической кривой Безье
     const createCubicBezier = useCallback(() => {
         const renderer = rendererRef.current;
         if (!renderer) return;
 
-        // Кубическая кривая: начало, контрольная1, контрольная2, конец (центрировано вокруг начала координат)
         const newCubic = new CubicBezier(-50, 50, -25, -50, 25, 50, 50, -50, false);
         newCubic.transform.x = renderer.width / 2;
         newCubic.transform.y = renderer.height / 2;
@@ -256,7 +235,6 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, newCubic.id);
     }, [shapes, addToHistoryDirect]);
 
-    // Удаление выбранной фигуры
     const deleteSelected = useCallback(() => {
         if (selectedShapeId === null) return;
 
@@ -266,14 +244,12 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, null);
     }, [shapes, selectedShapeId, addToHistoryDirect]);
 
-    // Переключение свойства замкнутости для кривых
     const toggleCurveClosed = useCallback(() => {
         if (selectedShapeId === null) return;
 
         const shape = shapes.find(s => s.id === selectedShapeId);
         if (!shape) return;
 
-        // Проверка наличия свойства closed (PathBezier, QuadraticBezier, CubicBezier)
         if ('closed' in shape) {
             const curveShape = shape as any;
             const newClosed = !curveShape.closed;
@@ -285,20 +261,17 @@ export default function EditorCanvas() {
         }
     }, [shapes, selectedShapeId, addToHistoryDirect]);
 
-    // Проверка, является ли выбранная фигура кривой с свойством closed
     const isCurveSelected = useCallback(() => {
         if (selectedShapeId === null) return false;
         const shape = shapes.find(s => s.id === selectedShapeId);
         return shape !== undefined && 'closed' in shape;
     }, [shapes, selectedShapeId]);
 
-    // Переключение режима добавления точки
     const toggleAddPointMode = useCallback(() => {
         setMode(prev => prev === 'addPoint' ? 'idle' : 'addPoint');
         setAddPointPosition(null);
     }, []);
 
-    // Перемещение фигуры вперед по слоям
     const moveShapeForward = useCallback((shapeId: number) => {
         const index = shapes.findIndex(s => s.id === shapeId);
         if (index === -1 || index === shapes.length - 1) return;
@@ -309,7 +282,6 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, selectedShapeId);
     }, [shapes, selectedShapeId, addToHistoryDirect]);
 
-    // Перемещение фигуры назад по слоям
     const moveShapeBackward = useCallback((shapeId: number) => {
         const index = shapes.findIndex(s => s.id === shapeId);
         if (index === -1 || index === 0) return;
@@ -320,9 +292,7 @@ export default function EditorCanvas() {
         addToHistoryDirect(updatedShapes, selectedShapeId);
     }, [shapes, selectedShapeId, addToHistoryDirect]);
 
-    // Получение фигуры по экранным координатам
     const getShapeAtPoint = useCallback((px: number, py: number): Shape | null => {
-        // Итерируем фигуры в обратном порядке (сверху вниз по порядку отрисовки)
         for (let i = shapes.length - 1; i >= 0; i--) {
             if (shapes[i].hitTest(px, py)) {
                 return shapes[i];
@@ -331,24 +301,22 @@ export default function EditorCanvas() {
         return null;
     }, [shapes]);
 
-    // Получение границ фигуры (AABB)
     const getShapeBoundsCorners = useCallback((shape: Shape): Point2D[] | null => {
         const bounds = shape.getBounds();
         if (!bounds) return null;
 
         return [
-            { x: bounds.minX, y: bounds.minY }, // nw
-            { x: bounds.minX + bounds.width / 2, y: bounds.minY }, // n
-            { x: bounds.maxX, y: bounds.minY }, // ne
-            { x: bounds.maxX, y: bounds.minY + bounds.height / 2 }, // e
-            { x: bounds.maxX, y: bounds.maxY }, // se
-            { x: bounds.minX + bounds.width / 2, y: bounds.maxY }, // s
-            { x: bounds.minX, y: bounds.maxY }, // sw
-            { x: bounds.minX, y: bounds.minY + bounds.height / 2 }, // w
+            { x: bounds.minX, y: bounds.minY },
+            { x: bounds.minX + bounds.width / 2, y: bounds.minY },
+            { x: bounds.maxX, y: bounds.minY },
+            { x: bounds.maxX, y: bounds.minY + bounds.height / 2 },
+            { x: bounds.maxX, y: bounds.maxY },
+            { x: bounds.minX + bounds.width / 2, y: bounds.maxY },
+            { x: bounds.minX, y: bounds.maxY },
+            { x: bounds.minX, y: bounds.minY + bounds.height / 2 },
         ];
     }, []);
 
-    // Получение ручки изменения размера по экранным координатам
     const getHandleAtPoint = useCallback((shape: Shape, px: number, py: number): ResizeHandle | 'rotate' | null => {
         const bounds = shape.getBounds();
         if (!bounds) return null;
@@ -367,7 +335,6 @@ export default function EditorCanvas() {
             ['w', corners[7]],
         ];
 
-        // Проверка ручек изменения размера
         for (const [handle, pos] of handles) {
             const dist = Math.hypot(px - pos.x, py - pos.y);
             if (dist <= HANDLE_SIZE) {
@@ -375,7 +342,6 @@ export default function EditorCanvas() {
             }
         }
 
-        // Проверка ручки вращения
         const center = { x: bounds.centerX, y: bounds.centerY };
         const topMid = corners[1];
         const dir = Math.atan2(topMid.y - center.y, topMid.x - center.x);
@@ -389,7 +355,6 @@ export default function EditorCanvas() {
         return null;
     }, [getShapeBoundsCorners]);
 
-    // Получение индекса контрольной точки по экранным координатам (для фигур с контрольными точками)
     const getPointAtPosition = useCallback((shape: Shape, px: number, py: number): number | null => {
         const points = shape.getControlPoints?.();
         if (!points) return null;
@@ -404,12 +369,10 @@ export default function EditorCanvas() {
         return null;
     }, []);
 
-    // Получение соотношения пикселей устройства для коррекции координат мыши
     const getDevicePixelRatio = useCallback(() => {
         return window.devicePixelRatio || 1;
     }, []);
 
-    // Преобразование координат канваса в координаты устройства
     const getDeviceCoordinates = useCallback((clientX: number, clientY: number): Point2D => {
         const canvas = canvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
@@ -423,21 +386,17 @@ export default function EditorCanvas() {
         };
     }, [getDevicePixelRatio]);
 
-    // Обработчик нажатия кнопки мыши
     const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
         const point = getDeviceCoordinates(e.clientX, e.clientY);
         const selectedShape = selectedShapeId ? shapes.find(s => s.id === selectedShapeId) : null;
 
         (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
 
-        // Обработка режима добавления точки - клик для добавления точки
         if (isAddPointMode && selectedShape && selectedShape.constructor.name === 'PathBezier') {
             const pathBezier = selectedShape as PathBezier;
             
-            // Преобразование координат устройства в локальные координаты
             const localPoint = pathBezier.transformPointToLocal(point.x, point.y);
             if (localPoint) {
-                // Вставка новой точки рядом с позицией клика
                 pathBezier.insertPointNear(localPoint);
                 
                 const updatedShapes = [...shapes];
@@ -509,7 +468,6 @@ export default function EditorCanvas() {
             }
         }
 
-        // Клик по канвасу для выбора или снятия выделения
         const shape = getShapeAtPoint(point.x, point.y);
         if (shape) {
             setSelectedShapeId(shape.id);
@@ -537,32 +495,27 @@ export default function EditorCanvas() {
         addToHistoryDirect,
     ]);
 
-    // Обработчик перемещения мыши
     const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
         const point = getDeviceCoordinates(e.clientX, e.clientY);
         setCursorPos(point);
 
         const selectedShape = selectedShapeId ? shapes.find(s => s.id === selectedShapeId) : null;
 
-        // Обработка режима добавления точки - показ превью везде на канвасе для PathBezier
         if (isAddPointMode && selectedShape && selectedShape.constructor.name === 'PathBezier') {
             setAddPointPosition(point);
             return;
         } else if (isAddPointMode) {
-            // Очистка превью, если не выбран PathBezier
             setAddPointPosition(null);
         }
 
         if (!selectedShape) {
             setHoveredHandle(null);
             setHoveredPointIndex(null);
-            // Проверка наведения на любую фигуру
             const hoveredShape = getShapeAtPoint(point.x, point.y);
             setHoveredShapeId(hoveredShape?.id || null);
             return;
         }
 
-        // Обновление состояния наведения
         if (mode === 'idle') {
             const handle = getHandleAtPoint(selectedShape, point.x, point.y);
             setHoveredHandle(handle);
@@ -575,7 +528,6 @@ export default function EditorCanvas() {
             }
         }
 
-        // Обработка операций
         if (mode === 'move' && startPointRef.current && startDataRef.current) {
             const deltaX = point.x - startPointRef.current.x;
             const deltaY = point.y - startPointRef.current.y;
@@ -615,7 +567,6 @@ export default function EditorCanvas() {
         setAddPointPosition,
     ]);
 
-    // Обработчик отпускания кнопки мыши
     const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
         (e.currentTarget as HTMLCanvasElement).releasePointerCapture(e.pointerId);
 
@@ -630,7 +581,6 @@ export default function EditorCanvas() {
         editPointIndexRef.current = null;
     }, [mode, addToHistory]);
 
-    // Обработчик двойного клика для добавления точек
     const handleDoubleClick = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
         const point = getDeviceCoordinates(e.clientX, e.clientY);
         
@@ -639,11 +589,9 @@ export default function EditorCanvas() {
         const shape = shapes.find(s => s.id === selectedShapeId);
         if (!shape) return;
 
-        // Проверка, является ли фигура PathBezier
         if (shape.constructor.name === 'PathBezier') {
             const pathBezier = shape as PathBezier;
             
-            // Проверка нажатия Ctrl - удаление точки
             if (e.ctrlKey || e.metaKey) {
                 const pointIndex = getPointAtPosition(shape, point.x, point.y);
                 if (pointIndex !== null) {
@@ -655,11 +603,9 @@ export default function EditorCanvas() {
                 return;
             }
             
-            // Преобразование координат устройства в локальные координаты
             const localPoint = pathBezier.transformPointToLocal(point.x, point.y);
             if (!localPoint) return;
             
-            // Вставка новой точки рядом с позицией клика
             pathBezier.insertPointNear(localPoint);
             
             const updatedShapes = [...shapes];
@@ -668,7 +614,6 @@ export default function EditorCanvas() {
         }
     }, [selectedShapeId, shapes, getDeviceCoordinates, addToHistoryDirect, getPointAtPosition]);
 
-    // Обработчик клавиатуры
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Delete') {
             e.preventDefault();
@@ -681,34 +626,28 @@ export default function EditorCanvas() {
                 undo();
             }
         } else if (e.key === 'Escape') {
-            // Выход из режима добавления точки
             if (isAddPointMode) {
                 toggleAddPointMode();
             }
         }
     }, [deleteSelected, undo, redo, isAddPointMode, toggleAddPointMode]);
 
-    // Обработка операции изменения размера
     const handleResize = (shape: Shape, point: Point2D, handle: ResizeHandle, startData: ShapeStartData) => {
         if (!startData.width || !startData.height) return;
 
-        // Вычисление дельты от начальной точки
         const deltaX = point.x - (startPointRef.current?.x || 0);
         const deltaY = point.y - (startPointRef.current?.y || 0);
 
-        // Вычисление новых границ на основе направления ручки
         let newMinX = startData.x - startData.width / 2;
         let newMinY = startData.y - startData.height / 2;
         let newMaxX = startData.x + startData.width / 2;
         let newMaxY = startData.y + startData.height / 2;
 
-        // Применение дельты в зависимости от того, какую ручку тянут
         if (handle === 'nw' || handle === 'n' || handle === 'ne') newMinY += deltaY;
         if (handle === 'se' || handle === 's' || handle === 'sw') newMaxY += deltaY;
         if (handle === 'nw' || handle === 'w' || handle === 'sw') newMinX += deltaX;
         if (handle === 'ne' || handle === 'e' || handle === 'se') newMaxX += deltaX;
 
-        // Принудительный минимальный размер
         const newWidth = newMaxX - newMinX;
         const newHeight = newMaxY - newMinY;
 
@@ -727,20 +666,16 @@ export default function EditorCanvas() {
             }
         }
 
-        // Вычисление новых коэффициентов масштабирования на основе изменения границ
         const newScaleX = newWidth / startData.width;
         const newScaleY = newHeight / startData.height;
 
-        // Применение нового масштаба с сохранением вращения
         shape.transform.scaleX = startData.scaleX * newScaleX;
         shape.transform.scaleY = startData.scaleY * newScaleY;
 
-        // Обновление позиции центра
         shape.transform.x = (newMinX + newMaxX) / 2;
         shape.transform.y = (newMinY + newMaxY) / 2;
     };
 
-    // Обработка операции вращения
     const handleRotate = (shape: Shape, point: Point2D, startData: ShapeStartData) => {
         const bounds = shape.getBounds();
         if (!bounds) return;
@@ -753,7 +688,6 @@ export default function EditorCanvas() {
         shape.transform.rotation = startData.rotation + deltaAngle;
     };
 
-    // Обработка редактирования точки
     const handleEditPoint = (shape: Shape, point: Point2D, pointIndex: number) => {
         const localPoint = shape.transformPointToLocal(point.x, point.y);
         if (!localPoint) return;
@@ -761,7 +695,6 @@ export default function EditorCanvas() {
         shape.setControlPoint(pointIndex, localPoint);
     };
 
-    // Синхронизация refs с состоянием для рендеринга
     const shapesRef = useRef<Shape[]>([]);
     const selectedShapeIdRef = useRef<number | null>(null);
     const hoveredShapeIdRef = useRef<number | null>(null);
@@ -788,7 +721,18 @@ export default function EditorCanvas() {
         hoveredPointIndexRef.current = hoveredPointIndex;
     }, [hoveredPointIndex]);
 
-    // Рендеринг
+    // НОВОЕ: Слушаем событие сохранения от Editor.tsx
+    useEffect(() => {
+        const handleSaveEvent = () => {
+            if (onSave) {
+                onSave(shapes);
+            }
+        };
+
+        window.addEventListener("saveProject", handleSaveEvent);
+        return () => window.removeEventListener("saveProject", handleSaveEvent);
+    }, [onSave, shapes]);
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -811,11 +755,9 @@ export default function EditorCanvas() {
 
             renderer.beginFrame(true);
 
-            // Отрисовка фигур
             for (const shape of shapesRef.current) {
                 shape.drawRaster(renderer);
                 
-                // Отрисовка свечения при наведении
                 if (shape.id === hoveredShapeIdRef.current && shape.id !== selectedShapeIdRef.current && hoveredShapeIdRef.current !== null) {
                     const bounds = shape.getBounds();
                     if (bounds) {
@@ -830,7 +772,6 @@ export default function EditorCanvas() {
                 }
             }
 
-            // Отрисовка UI выделения
             const selectedShape = selectedShapeIdRef.current ? shapesRef.current.find(s => s.id === selectedShapeIdRef.current) : null;
             if (selectedShape) {
                 renderSelectionUI(renderer, selectedShape);
@@ -851,12 +792,10 @@ export default function EditorCanvas() {
         };
     }, []);
 
-    // Отрисовка UI выделения
     const renderSelectionUI = (renderer: RasterRenderer, shape: Shape) => {
         const bounds = shape.getBounds();
         if (!bounds) return;
 
-        // Отрисовка пунктирной рамки выделения
         const corners: Point2D[] = [
             { x: bounds.minX, y: bounds.minY },
             { x: bounds.maxX, y: bounds.minY },
@@ -866,7 +805,6 @@ export default function EditorCanvas() {
 
         drawDashedPolygon(renderer, [...corners, corners[0]], { r: 0, g: 100, b: 200, a: 255 }, 2);
 
-        // Отрисовка ручек изменения размера
         const handles = getShapeBoundsCorners(shape);
         if (handles) {
             for (const handle of handles) {
@@ -874,7 +812,6 @@ export default function EditorCanvas() {
             }
         }
 
-        // Отрисовка ручки вращения
         const topMid = getShapeBoundsCorners(shape)?.[1];
         if (topMid) {
             const center = { x: bounds.centerX, y: bounds.centerY };
@@ -884,7 +821,6 @@ export default function EditorCanvas() {
             drawHandle(renderer, { x: rotHandleX, y: rotHandleY }, true);
         }
 
-        // Отрисовка контрольных точек для фигур с getControlPoints
         const controlPoints = shape.getControlPoints?.();
         if (controlPoints) {
             for (let i = 0; i < controlPoints.length; i++) {
@@ -894,13 +830,11 @@ export default function EditorCanvas() {
             }
         }
 
-        // Показ превью для добавления точки на PathBezier
         if (shape.constructor.name === 'PathBezier' && addPointPositionRef.current) {
             drawAddPointPreview(renderer, addPointPositionRef.current);
         }
     };
 
-    // Отрисовка квадратной ручки
     const drawHandle = (renderer: RasterRenderer, pos: Point2D, isRotation: boolean) => {
         const color = isRotation ? { r: 255, g: 150, b: 0, a: 255 } : { r: 0, g: 150, b: 255, a: 255 };
         const size = HANDLE_SIZE;
@@ -916,7 +850,6 @@ export default function EditorCanvas() {
         renderer.strokePolygon(corners, { r: 255, g: 255, b: 255, a: 255 }, 1);
     };
 
-    // Отрисовка круглой контрольной точки
     const drawControlPoint = (renderer: RasterRenderer, pos: Point2D, isHovered: boolean) => {
         const radius = isHovered ? 6 : 4;
         const color = isHovered ? { r: 255, g: 200, b: 0, a: 255 } : { r: 150, g: 150, b: 255, a: 255 };
@@ -934,7 +867,6 @@ export default function EditorCanvas() {
         renderer.fillPolygon(points, color);
     };
 
-    // Отрисовка превью круга для добавления новой точки
     const drawAddPointPreview = (renderer: RasterRenderer, pos: Point2D) => {
         const radius = 8;
         const color = { r: 0, g: 255, b: 100, a: 200 };
@@ -953,7 +885,6 @@ export default function EditorCanvas() {
         renderer.strokePolygon(points, { r: 255, g: 255, b: 255, a: 255 }, 1);
     };
 
-    // Отрисовка пунктирного полигона
     const drawDashedPolygon = (renderer: RasterRenderer, points: Point2D[], color: any, width: number) => {
         const dashLength = 5;
         const gapLength = 3;
@@ -981,7 +912,6 @@ export default function EditorCanvas() {
         }
     };
 
-    // Обновление курсора на основе состояния наведения
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -1010,7 +940,6 @@ export default function EditorCanvas() {
         canvas.style.cursor = cursor;
     }, [hoveredHandle, hoveredPointIndex, isAddPointMode]);
 
-    // Установка слушателя клавиатуры
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
@@ -1018,7 +947,6 @@ export default function EditorCanvas() {
 
     return (
         <div className="flex flex-col gap-4 w-full h-full bg-slate-900 text-white">
-            {/* Панель инструментов */}
             <div className="flex gap-2 p-2 bg-slate-800 border-b border-slate-700 flex-wrap">
                 <button
                     onClick={createRectangle}
@@ -1103,7 +1031,6 @@ export default function EditorCanvas() {
             </div>
 
             <div className="flex flex-1 overflow-hidden gap-2 p-2">
-                {/* Канвас */}
                 <div ref={containerRef} className="flex-1 bg-black border border-slate-700 rounded overflow-hidden relative" style={{ minHeight: '300px' }}>
                     <canvas
                         ref={canvasRef}
@@ -1117,13 +1044,11 @@ export default function EditorCanvas() {
                             height: '100%',
                         }}
                     />
-                    {/* Отображение координат */}
                     <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 px-3 py-1 rounded text-xs text-gray-300 font-mono">
                         X: {Math.round(cursorPos.x)}, Y: {Math.round(cursorPos.y)}
                     </div>
                 </div>
 
-                {/* Панель слоев */}
                 <aside className="w-64 bg-slate-800 border border-slate-700 rounded p-3 overflow-y-auto">
                     <h3 className="font-bold mb-2">Слои</h3>
                     {shapes.length === 0 ? (

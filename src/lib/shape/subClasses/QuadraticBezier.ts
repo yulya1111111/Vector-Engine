@@ -167,6 +167,7 @@ export class QuadraticBezier extends Shape
     {
         return {
             type: 'QuadraticBezier',
+            id: this.id,     
             p0: this._p0,
             p1: this._p1,
             p2: this._p2,
