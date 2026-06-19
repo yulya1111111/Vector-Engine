@@ -1,4 +1,4 @@
-﻿import { Shape } from '../Shape';
+﻿﻿import { Shape } from '../Shape';
 import { Bounds } from '../Bounds';
 import { RasterRenderer } from '../../raster/RasterRender.ts';
 import { Point2D } from '../../math/mat3';
@@ -8,19 +8,27 @@ export class QuadraticBezier extends Shape
     private _p0: Point2D;
     private _p1: Point2D;
     private _p2: Point2D;
+    private _closed: boolean;
 
-    constructor(x0: number, y0: number, x1: number, y1: number, x2: number, y2: number)
+    constructor(x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, closed: boolean = false)
     {
         super();
         this._p0 = { x: x0, y: y0 };
         this._p1 = { x: x1, y: y1 };
         this._p2 = { x: x2, y: y2 };
+        this._closed = closed;
     }
 
     // Геттеры для контрольных точек
     get p0(): Point2D { return { ...this._p0 }; }
     get p1(): Point2D { return { ...this._p1 }; }
     get p2(): Point2D { return { ...this._p2 }; }
+    get closed(): boolean { return this._closed; }
+
+    set p0(value: Point2D) { this._p0 = { ...value }; }
+    set p1(value: Point2D) { this._p1 = { ...value }; }
+    set p2(value: Point2D) { this._p2 = { ...value }; }
+    set closed(value: boolean) { this._closed = value; }
 
     // evalLocal(t) — вычисление точки на кривой по формуле B(t)=(1−t)²p₀ + 2(1−t)tp₁ + t²p₂
     evalLocal(t: number): Point2D {
@@ -107,10 +115,30 @@ export class QuadraticBezier extends Shape
         const flatness = 1; // Более высокая точность для отрисовки
         const points = this.flattenDevicePoints(flatness);
 
-        if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
-            r.strokePolygon(points, this.getStrokeColor(), this.strokeWidth);
+        if (points.length < 2) return;
+
+        if (this.fillOpacity > 0 && this._closed) {
+            // Для замкнутой кривой добавляем первую точку в конец
+            const closedPoints = [...points, points[0]];
+            r.fillPolygon(closedPoints, this.getFillColor());
         }
-        // Кривые Безье не заполняются - только stroke
+
+        if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
+            if (this._closed && points.length > 2) {
+                // Замкнутая кривая - рисуем полигон
+                r.strokePolygon(points, this.getStrokeColor(), this.strokeWidth);
+            } else {
+                // Открытая кривая - рисуем каждый сегмент отдельно
+                for (let i = 0; i < points.length - 1; i++) {
+                    r.strokeLine(
+                        points[i].x, points[i].y,
+                        points[i + 1].x, points[i + 1].y,
+                        this.getStrokeColor(),
+                        this.strokeWidth
+                    );
+                }
+            }
+        }
     }
 
     hitTest(px: number, py: number): boolean {
@@ -142,6 +170,7 @@ export class QuadraticBezier extends Shape
             p0: this._p0,
             p1: this._p1,
             p2: this._p2,
+            closed: this._closed,
             transform: this.transform,
             fillStyle: this.fillStyle,
             fillOpacity: this.fillOpacity,
@@ -156,7 +185,8 @@ export class QuadraticBezier extends Shape
         const cloned = new QuadraticBezier(
             this._p0.x, this._p0.y,
             this._p1.x, this._p1.y,
-            this._p2.x, this._p2.y
+            this._p2.x, this._p2.y,
+            this._closed
         );
         cloned.transform = this.transform.clone();
         cloned.fillStyle = this.fillStyle;

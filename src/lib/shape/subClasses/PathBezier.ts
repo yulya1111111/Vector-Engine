@@ -173,7 +173,7 @@ export class PathBezier extends Shape {
             const p2 = this._points[p2Idx];
             const p3 = this._points[p3Idx];
 
-            // Catmull-Rom to Cubic Bezier конвертация
+            // Catmull-Rom в Cubic Bezier конвертация
             // alpha = 0 (кардинальный сплайн) дает tension = 0.5
             const tension = 0.5;
             
@@ -222,6 +222,19 @@ export class PathBezier extends Shape {
 
     addPoint(point: Point2D): void {
         this._points.push({ ...point });
+    }
+
+    /**
+     * Добавляет новую точку в путь в заданных координатах
+     * @param point - точка в локальных координатах для добавления
+     * @returns индекс добавленной точки
+     */
+    insertPointNear(point: Point2D): number {
+        // Для всех режимов просто добавляем точку в конец списка
+        // Для polyline - это логично (добавляем следующую вершину)
+        // Для bezier/catmull - новые точки будут использоваться для построения кривой
+        this._points.push({ ...point });
+        return this._points.length - 1;
     }
 
     removePoint(index: number): void {
@@ -273,12 +286,27 @@ export class PathBezier extends Shape {
 
         if (points.length < 2) return;
 
-        if (this.fillOpacity > 0 && this._closed) {
-            r.fillPolygon(points, this.getFillColor());
+        if (this.fillOpacity > 0 && this._closed && points.length > 2) {
+            // Для замкнутой кривой добавляем первую точку в конец
+            const closedPoints = [...points, points[0]];
+            r.fillPolygon(closedPoints, this.getFillColor());
         }
 
         if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
-            r.strokePolygon(points, this.getStrokeColor(), this.strokeWidth);
+            if (this._closed && points.length > 2) {
+                // Замкнутая кривая - рисуем полигон
+                r.strokePolygon(points, this.getStrokeColor(), this.strokeWidth);
+            } else {
+                // Открытая кривая - рисуем каждый сегмент отдельно
+                for (let i = 0; i < points.length - 1; i++) {
+                    r.strokeLine(
+                        points[i].x, points[i].y,
+                        points[i + 1].x, points[i + 1].y,
+                        this.getStrokeColor(),
+                        this.strokeWidth
+                    );
+                }
+            }
         }
     }
 

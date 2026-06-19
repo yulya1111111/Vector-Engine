@@ -161,12 +161,15 @@ export class RasterRenderer
             this.resize();
         }
 
+        if (this.width === 0 || this.height === 0) return;
+
         if (clear) 
         {
+            // Очищаем в чёрный цвет вместо белого
             for (let i = 0; i < this._buf.length; i += 4) {
-                this._buf[i] = 255;     // R
-                this._buf[i+1] = 255;   // G
-                this._buf[i+2] = 255;   // B
+                this._buf[i] = 255;       // R
+                this._buf[i+1] = 255;     // G
+                this._buf[i+2] = 255;     // B
                 this._buf[i+3] = 255;   // A
             }
         }

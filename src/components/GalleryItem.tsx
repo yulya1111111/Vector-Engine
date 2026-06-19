@@ -1,10 +1,10 @@
-﻿import { motion } from "motion/react";
+﻿﻿import { motion } from "motion/react";
 import {IGalleryItemProps} from "../Interfaces/IGalleryItem.ts";
 
 import "../css/TailwindcssStyles.css";
 import {Link} from "react-router-dom";
 
-export default function GalleryItem({id, name, date, onOpenBtn} : IGalleryItemProps)
+export default function GalleryItem({id, name, date, onOpenBtn, onCloseBtn} : IGalleryItemProps)
 {
     return (
         <motion.div className="gallery-item-div"
@@ -19,6 +19,12 @@ export default function GalleryItem({id, name, date, onOpenBtn} : IGalleryItemPr
                         Открыть
                     </button>
                 </Link>
+                    
+                <button
+                    className = "bg-blue-800 text-sm font-medium text-white hover:bg-blue-500 rounded ml-4"
+                    onClick={onCloseBtn} >
+                    Удалить проект
+                </button>
         </motion.div>
     )
 }

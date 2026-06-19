@@ -1,6 +1,7 @@
-﻿import { Shape } from '../Shape';
+﻿﻿import { Shape } from '../Shape';
 import { Bounds } from '../Bounds';
 import { RasterRenderer } from '../../raster/RasterRender.ts';
+import { Point2D } from '../../math/mat3';
 
 export class Line extends Shape 
 {
@@ -84,6 +85,35 @@ export class Line extends Shape
         const ddx = px - projX;
         const ddy = py - projY;
         return Math.sqrt(ddx * ddx + ddy * ddy);
+    }
+
+    // Control points for Line (start and end points)
+    getControlPoints(): Point2D[] {
+        return [{ x: this.x1, y: this.y1 }, { x: this.x2, y: this.y2 }];
+    }
+
+    setControlPoint(idx: number, pt: Point2D): void {
+        switch (idx) {
+            case 0: 
+                // Move start point, adjust end point to maintain center
+                const dx = pt.x - this.x1;
+                const dy = pt.y - this.y1;
+                this.x1 = pt.x;
+                this.y1 = pt.y;
+                this.x2 += dx;
+                this.y2 += dy;
+                break;
+            case 1:
+                // Move end point, adjust start point to maintain center
+                const dx2 = pt.x - this.x2;
+                const dy2 = pt.y - this.y2;
+                this.x2 = pt.x;
+                this.y2 = pt.y;
+                this.x1 += dx2;
+                this.y1 += dy2;
+                break;
+            default: throw new Error(`Invalid control point index: ${idx}`);
+        }
     }
 
     toJSON(): any 

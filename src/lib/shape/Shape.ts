@@ -1,4 +1,4 @@
-﻿import { Mat3, mat3, Point2D } from '../math/mat3';
+﻿﻿import { Mat3, mat3, Point2D } from '../math/mat3';
 import { Transform } from './Transform';
 import { Bounds } from './Bounds';
 import { RasterRenderer, RGBA, hexToRGBA } from '../raster/RasterRender.ts';
@@ -100,7 +100,16 @@ export abstract class Shape
     abstract getLocalBounds(): Bounds | null;
     abstract toJSON(): any;
 
-    protected getFillColor(): RGBA 
+    // Стандартная реализация для фигур без контрольных точек
+    getControlPoints(): Point2D[] | null {
+        return null;
+    }
+
+    setControlPoint(_idx: number, _pt: Point2D): void {
+        throw new Error('setControlPoint не поддерживается для этой фигуры');
+    }
+
+    protected getFillColor(): RGBA
     {
         return hexToRGBA(this.fillStyle, Math.floor(this.fillOpacity * 255));
     }

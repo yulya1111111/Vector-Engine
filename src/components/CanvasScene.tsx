@@ -65,7 +65,7 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
         const cubicBezier1 = new CubicBezier(0, 0, 40, -60, 80, 60, 120, 0);
         cubicBezier1.transform.x = 300;
         cubicBezier1.transform.y = 400;
-        cubicBezier1.strokeStyle = "#ff00ff";
+        cubicBezier1.strokeStyle = "#ff0000";
         cubicBezier1.strokeWidth = 4;
         cubicBezier1.strokeOpacity = 1;
         cubicBezier1.fillOpacity = 0;
@@ -212,7 +212,7 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
                 width: '100%',
                 height: '100%',
                 display: 'block',
-                background: '#000'
+                background: '#fff'
             }}
         >
             <canvas
